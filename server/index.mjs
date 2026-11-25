@@ -9,7 +9,7 @@ import { revisarVersion, bloqueRevision } from "./revision.mjs";
 import { configPublica, guardarConfig, claveApi, VERSION } from "./config.mjs";
 import { prepararConstruccion, leerConstruccion, resumenConstruccion, versionConstruible, aprobarTarea, devolverTarea, verificarTarea, verificarPendientes, guardarConstruccion, escribirContrato, actividadDe, vigilarConstruccion } from "./construccion.mjs";
 import { fileURLToPath } from "node:url";
-import { resolve, sep } from "node:path";
+import { resolve, sep, join, relative } from "node:path";
 import {
   listarProyectos, listarProyectosConActividad, crearProyecto, obtenerProyecto, borrarProyecto, renombrarProyecto, duplicarProyecto, exportarProyecto, guardarInstantanea, deshacerTurno, leerPlano, actualizarItem,
   iniciarPrototipo, aprobarPantalla, devolverPantalla, leerPantallaPrototipo, leerVersionPantalla, restaurarVersionPantalla, slug,
@@ -18,7 +18,8 @@ import {
 import { responder, repararHistorial, bloquePrototipo, compactarHistorial, tokensDelHistorial, podarHistorial, tipoDeTurno, UMBRAL_COMPACTAR, MODELO, PRECIOS, costoUsd } from "./entrevista.mjs";
 import { dialogoCarpeta, listarCarpetas } from "./carpetas.mjs";
 
-process.chdir(resolve(fileURLToPath(new URL("..", import.meta.url))));
+const RAIZ = resolve(fileURLToPath(new URL("..", import.meta.url)));
+try { process.chdir(RAIZ); } catch {} // dentro de la app de escritorio el cwd puede no ser cambiable; las rutas de abajo son absolutas igual
 
 const PUERTO = Number(process.env.PLANO_PUERTO || 4747);
 const app = new Hono();
@@ -457,7 +458,7 @@ function describirError(e) {
   return e?.message || "Error desconocido";
 }
 
-app.use("/*", serveStatic({ root: "./client" }));
+app.use("/*", serveStatic({ root: relative(process.cwd(), join(RAIZ, "client")) || "./client" }));
 
 // Lo que el agente de código marca como hecho se verifica aunque nadie tenga Plano abierto en el navegador: el agente
 // espera esa verificación para seguir. Plano mira el archivo del tablero (se entera al instante) y además repasa cada 20 s.
@@ -469,7 +470,24 @@ setInterval(() => {
   }
 }, 20000).unref();
 
-serve({ fetch: app.fetch, port: PUERTO }, () => {
-  console.log(`Plano ${VERSION} escuchando en http://localhost:${PUERTO}${process.env.PLANO_MOCK ? "  (modo simulado, sin IA)" : ""}`);
-  if (!claveApi() && !process.env.PLANO_MOCK) console.log("Falta la clave de API: cargala en Configuración (o ANTHROPIC_API_KEY en .env). La entrevista no va a responder hasta entonces.");
-});
+// Arranca el servidor. Resuelve con el puerto en el que quedó escuchando. Si el puerto pedido está ocupado y se permite,
+// prueba los siguientes (la app de escritorio lo necesita: puede haber un `npm run dev` abierto en el 4747).
+export function iniciar(puerto = PUERTO, { buscarLibre = false } = {}) {
+  return new Promise((resolver, rechazar) => {
+    const intentar = (p, quedan) => {
+      const servidor = serve({ fetch: app.fetch, port: p }, () => {
+        console.log(`Plano ${VERSION} escuchando en http://localhost:${p}${process.env.PLANO_MOCK ? "  (modo simulado, sin IA)" : ""}`);
+        if (!claveApi() && !process.env.PLANO_MOCK) console.log("Falta la clave de API: cargala en Configuración (o ANTHROPIC_API_KEY en .env). La entrevista no va a responder hasta entonces.");
+        resolver({ puerto: p, servidor });
+      });
+      servidor.on("error", (e) => {
+        if (e.code === "EADDRINUSE" && buscarLibre && quedan > 0) { console.log(`[plano] el puerto ${p} está ocupado; pruebo el ${p + 1}`); intentar(p + 1, quedan - 1); }
+        else rechazar(e);
+      });
+    };
+    intentar(puerto, 20);
+  });
+}
+
+// Corrido directo (`node server/index.mjs`, `npm run dev`) arranca solo; importado desde la app de escritorio, espera a que lo llamen.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) iniciar().catch((e) => { console.error(e.message); process.exit(1); });

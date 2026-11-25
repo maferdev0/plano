@@ -1,0 +1,43 @@
+# Compila los instaladores de Plano y los publica como release de GitHub.
+# Se dispara con un tag v* (por ejemplo: git tag v0.2.0 && git push --tags) o a mano desde la pestaña Actions.
+# La app instalada lee estos releases para actualizarse sola (electron-updater).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  instaladores:
+    name: ${{ matrix.nombre }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            nombre: Windows
+            args: --win
+          - os: macos-latest
+            nombre: macOS
+            args: --mac
+          - os: ubuntu-latest
+            nombre: Linux
+            args: --linux
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Compilar y publicar
+        run: npx electron-builder ${{ matrix.args }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Sin firma por ahora. Cuando haya certificado: CSC_LINK y CSC_KEY_PASSWORD (Windows/macOS), y APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID para notarizar en macOS.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"

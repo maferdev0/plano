@@ -1,0 +1,24 @@
+# En cada push y pull request: que el código al menos cargue y que la interfaz arranque con el servidor simulado.
+name: Verificar
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Sintaxis
+        run: for f in server/*.mjs client/*.js app/*.mjs; do node --check "$f"; done
+      - name: El servidor arranca y sirve la interfaz
+        run: |
+          PLANO_MOCK=1 PLANO_PUERTO=4799 node server/index.mjs & sleep 2
+          curl -fsS -o /dev/null http://localhost:4799/ && curl -fsS -o /dev/null http://localhost:4799/api/config
