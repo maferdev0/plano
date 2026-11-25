@@ -1,5 +1,5 @@
 // Plano — interfaz de la tajada 1: proyectos + conversación + el Plano en pestañas.
-import { t, idiomaActual, idiomaElegido, locale, traducirEstatico, IDIOMAS } from "./idiomas.js?v=68";
+import { t, idiomaActual, idiomaElegido, locale, traducirEstatico, IDIOMAS } from "./idiomas.js?v=69";
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
@@ -1532,9 +1532,14 @@ function renderSiguiente() {
   if (!el || !plano) return;
   const preguntas = (plano.preguntas || []).length;
   const versiones = (plano.roadmap || []).length;
-  const sinIdentidad = !cantidad("identidad");
+  // un Plano recién creado ya trae nombre y tipo de aplicación: eso no es una entrevista hecha
+  const sinIdentidad = !plano.identidad?.que_es;
+  const faltan = [];
+  if (!(plano.pantallas || []).length) faltan.push(t("pantallas"));
+  if (!(plano.entidades || []).length) faltan.push(t("entidades"));
   let paso, texto, accion = null;
   if (sinIdentidad) { paso = t("Entrevista"); texto = t("Contale a Plano qué querés construir."); }
+  else if (faltan.length && !versiones) { paso = t("Entrevista"); texto = t("La entrevista sigue: todavía no hay {q} registradas. Contá cómo se usa y qué maneja.", { q: faltan.join(` ${t("ni")} `) }); }
   else if (preguntas) { paso = t("Entrevista"); texto = preguntas === 1 ? t("Queda 1 pregunta abierta. Siguiente: cerrarla y armar el roadmap.") : t("Quedan {n} preguntas abiertas. Siguiente: cerrarlas y armar el roadmap.", { n: preguntas }); }
   else if (!versiones) { paso = t("Entrevista"); texto = t("El Plano está cerrado. Siguiente: armar el roadmap, las versiones en que se construye."); accion = [t("Armar el roadmap"), derivarRoadmap]; }
   else {
