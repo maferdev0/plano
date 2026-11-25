@@ -23,22 +23,26 @@ Tres ideas:
 
 Las herramientas de la tajada 5 (generador de esquema Convex, verificador y hooks) ya existen en `herramientas/`, probadas en un repo aparte; falta enchufarlas a la interfaz.
 
-## Correr la entrevista
+## Instalar
 
-Requisitos: Node 22 o más nuevo, y una API key de Anthropic.
+Plano es una aplicación de escritorio que corre en tu computadora: tus proyectos quedan en sus carpetas y tu clave de API en tu máquina. No hay servidor de Plano, no hay base de datos, no hay cuenta.
+
+**Instalado:** bajá el instalador para Windows, macOS o Linux desde [Releases](https://github.com/maferdev0/plano/releases). Al abrirlo queda en la bandeja del sistema (junto al reloj) y se actualiza solo. En Configuración cargás tu nombre y tu clave de API de Anthropic.
+
+**Desde el código** (para desarrollar Plano), con Node 22 o más nuevo:
 
 ```
 npm install
-copy .env.example .env      (en Mac/Linux: cp .env.example .env)
+npm run dev          # el servidor solo; la interfaz en http://localhost:4747
+npm run escritorio   # la ventana de escritorio (Electron) con el servidor adentro
+npm run empaquetar   # los instaladores, en dist/
 ```
 
-Abrí `.env` y pegá tu `ANTHROPIC_API_KEY`. Después:
+La clave se carga en Configuración, o en un `.env` (`copy .env.example .env` y pegarla ahí). Lo que esté en Configuración manda sobre el `.env`.
 
-```
-npm run dev
-```
+## Correr la entrevista
 
-Entrá a http://localhost:4747. Creás un proyecto dándole un nombre y una carpeta que ya exista (la carpeta del repo del proyecto), y la entrevista arranca con la única pregunta que importa: ¿qué querés construir?
+Entrá a Plano. Creás un proyecto dándole un nombre y una carpeta que ya exista (la carpeta del repo del proyecto), y la entrevista arranca con la única pregunta que importa: ¿qué querés construir?
 
 A medida que hablás, a la derecha aparecen las tarjetas. **Si algo que dijiste no aparece, no quedó registrado.** Lo que el agente asume solo aparece marcado como *supuesto* para que lo confirmes o lo corrijas.
 
@@ -75,10 +79,12 @@ Un simulador responde en lugar de Claude. Sirve para ver la interfaz y el flujo 
 ## Estructura
 
 ```
-server/   Hono. Sirve la interfaz, guarda el Plano en archivos, corre el agente de la entrevista.
-client/   HTML, CSS y JS sin build. Chat a la izquierda, el Plano a la derecha.
+server/   Hono. Sirve la interfaz, guarda el Plano en archivos, corre el agente de la entrevista, verifica la construcción.
+client/   HTML, CSS y JS sin build. Barra lateral, chat a la izquierda, el Plano a la derecha. Anda en la ventana de escritorio y en un navegador común.
+app/      la cáscara de escritorio (Electron): arranca el servidor, la ventana, la bandeja, el actualizador. No sabe nada del Plano.
 herramientas/   plano.mjs (generate / verify / aprobar / firmar / instalar) y plano-hook.mjs (hooks de Claude Code).
-data/     registro local de proyectos. No se versiona.
+build/    el ícono de la aplicación.
+data/     registro local de proyectos y configuración cuando se corre desde el código. No se versiona. Instalado, va en la carpeta de datos del sistema.
 ```
 
 ## Licencia

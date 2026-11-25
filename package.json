@@ -1,19 +1,104 @@
 {
   "name": "plano",
   "version": "0.2.0",
-  "description": "Plano — los cimientos de un proyecto, escritos para que la IA los respete. Tajada 1: la entrevista fundacional.",
+  "description": "Plano — los cimientos de un proyecto, escritos para que la IA los respete.",
   "license": "MIT",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "node server/index.mjs",
-    "start": "node server/index.mjs"
+    "start": "node server/index.mjs",
+    "escritorio": "electron .",
+    "empaquetar": "electron-builder --publish never",
+    "empaquetar:win": "electron-builder --win --publish never",
+    "publicar": "electron-builder --publish always"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
     "@hono/node-server": "^2.1.5",
     "dotenv": "^17.2.0",
+    "electron-updater": "^6.8.11",
     "hono": "^4.13.16"
+  },
+  "devDependencies": {
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0"
+  },
+  "main": "app/main.mjs",
+  "homepage": "https://github.com/maferdev0/plano",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maferdev0/plano.git"
+  },
+  "author": "Martín Fernández",
+  "build": {
+    "appId": "solutions.mafer.plano",
+    "productName": "Plano",
+    "artifactName": "Plano-${version}-${os}-${arch}.${ext}",
+    "asar": false,
+    "files": [
+      "app/**",
+      "server/**",
+      "client/**",
+      "herramientas/**",
+      "package.json",
+      "LICENSE",
+      "!**/*.map"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "maferdev0",
+        "repo": "plano"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
+      "shortcutName": "Plano",
+      "language": "3082"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development",
+      "icon": "build/icon.png",
+      "maintainer": "Martín Fernández"
+    }
   }
 }

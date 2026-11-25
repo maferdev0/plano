@@ -29,7 +29,7 @@
   --sombra: 0 1px 2px rgba(24, 24, 27, 0.06);
   --sombra-media: 0 4px 12px rgba(24, 24, 27, 0.08);
   --sombra-alta: 0 16px 40px rgba(24, 24, 27, 0.16);
-  --barra-alto: 52px;
+  --barra-alto: 44px;
   --cabecera-alto: 46px;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 15px;
@@ -128,10 +128,59 @@ input, textarea, button { font: inherit; color: inherit; }
 input:focus-visible, textarea:focus-visible { outline: 0; border-color: var(--foco) !important; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
 
 /* barra */
-.barra { flex: none; height: var(--barra-alto); display: flex; align-items: center; gap: 14px; padding: 0 24px; border-bottom: 1px solid var(--gris-200); background: var(--blanco); }
+/* ---------- el marco de la aplicación: barra lateral + columna principal ---------- */
+.marco-app { flex: 1; display: flex; min-height: 0; min-width: 0; }
+.principal { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.lateral { flex: none; width: 260px; display: flex; flex-direction: column; background: var(--gris-50); border-right: 1px solid var(--gris-200); min-height: 0; transition: width .18s ease, opacity .18s ease; overflow: hidden; }
+.marco-app--plegado .lateral { width: 0; border-right-width: 0; opacity: 0; pointer-events: none; }
+.lateral__cab { height: var(--barra-alto); flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 10px; }
+.lateral__alternar { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--gris-500); cursor: pointer; flex: none; }
+.lateral__alternar svg { width: 18px; height: 18px; }
+.lateral__alternar:hover { background: var(--gris-100); color: var(--tinta); }
+.lateral__nuevo { margin: 4px 12px 10px; height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid var(--gris-200); border-radius: 10px; background: var(--blanco); color: var(--tinta); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.lateral__nuevo:hover { border-color: var(--gris-300); }
+.lateral__mas { width: 20px; height: 20px; border-radius: 6px; background: var(--primario); color: var(--primario-texto); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; flex: none; }
+.lateral__nav { display: flex; flex-direction: column; gap: 1px; padding: 0 8px; }
+.lateral__item { height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--gris-600, var(--tinta)); font: inherit; font-size: 13.5px; cursor: pointer; text-align: left; white-space: nowrap; }
+.lateral__item svg { width: 17px; height: 17px; flex: none; color: var(--gris-500); }
+.lateral__item:hover { background: var(--gris-100); color: var(--tinta); }
+.lateral__item--activo { background: var(--gris-100); color: var(--tinta); font-weight: 500; }
+.lateral__seccion { margin: 18px 18px 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--gris-400); }
+.lateral__proyectos { list-style: none; margin: 0; padding: 0 8px; flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; }
+.lateral__proyecto { width: 100%; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--gris-600, var(--tinta)); font: inherit; font-size: 13.5px; cursor: pointer; text-align: left; }
+.lateral__proyecto span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lateral__proyecto:hover { background: var(--gris-100); color: var(--tinta); }
+.lateral__proyecto--activo { background: var(--gris-100); color: var(--tinta); font-weight: 500; }
+.lateral__punto { width: 7px; height: 7px; border-radius: 50%; background: var(--primario); flex: none; animation: latir 1.2s ease-in-out infinite; }
+.lateral__pie { flex: none; padding: 10px 18px 12px; border-top: 1px solid var(--gris-100); display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--gris-400); white-space: nowrap; }
+.lateral__velo { position: fixed; inset: 0; background: var(--velo); z-index: 30; }
+.barra { flex: none; height: var(--barra-alto); display: flex; align-items: center; gap: 12px; padding: 0 16px 0 10px; border-bottom: 1px solid var(--gris-200); background: var(--blanco); }
+.barra__abrir-lateral { display: none; }
+.marco-app--plegado .barra__abrir-lateral { display: inline-flex; }
+.barra__marca { display: none; }
+.marco-app--plegado .barra__marca { display: inline; }
+.barra__proyecto { height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px; font-weight: 500; color: var(--tinta); cursor: pointer; max-width: 50vw; }
+.barra__proyecto span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barra__proyecto::after { content: ""; width: 7px; height: 7px; border-right: 1.6px solid var(--gris-500); border-bottom: 1.6px solid var(--gris-500); transform: translateY(-2px) rotate(45deg); flex: none; }
+.barra__proyecto:hover { background: var(--gris-100); }
+.barra__estado { margin-left: auto; }
+/* en pantallas angostas la barra lateral se abre por encima */
+@media (max-width: 900px) {
+  .lateral { position: fixed; top: 0; bottom: 0; left: 0; z-index: 31; box-shadow: var(--sombra-media); }
+  .marco-app:not(.marco-app--plegado) .lateral__velo { display: block; }
+  .barra__abrir-lateral { display: inline-flex; }
+  .barra__marca { display: inline; }
+}
+/* la app de escritorio: la barra es la barra de título de la ventana (se arrastra desde ahí) y deja lugar a los botones del sistema */
+body.escritorio .barra, body.escritorio .lateral__cab { -webkit-app-region: drag; }
+body.escritorio .barra button, body.escritorio .barra a, body.escritorio .lateral__cab button, body.escritorio .lateral__cab a { -webkit-app-region: no-drag; }
+body.escritorio .barra { padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 16px); }
+body.escritorio.mac .lateral__cab { padding-left: 84px; }
+body.escritorio.mac .marco-app--plegado .barra { padding-left: 84px; }
+.inicio__acciones .btn--secundario { display: none; } /* Uso y Configuración ya están en la barra lateral */
+@media (max-width: 900px) { .inicio__acciones .btn--secundario { display: inline-flex; } }
 .marca { font-weight: 700; font-size: 18px; color: var(--tinta); text-decoration: none; letter-spacing: -0.03em; }
-.barra__proyecto { color: var(--gris-500); }
-.barra__proyecto:not(:empty)::before { content: "/"; margin-right: 14px; color: var(--gris-300); }
+
 .barra__estado { margin-left: auto; font-size: 13px; color: var(--gris-500); }
 
 /* inicio */

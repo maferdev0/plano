@@ -1,7 +1,8 @@
 // Plano — interfaz de la tajada 1: proyectos + conversación + el Plano en pestañas.
-import { t, idiomaActual, idiomaElegido, locale, traducirEstatico, IDIOMAS } from "./idiomas.js?v=67";
+import { t, idiomaActual, idiomaElegido, locale, traducirEstatico, IDIOMAS } from "./idiomas.js?v=68";
 
 const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => [...document.querySelectorAll(sel)];
 const COLECCIONES = [
   ["identidad", "Identidad"],
   ["decisiones", "Decisiones"],
@@ -55,7 +56,10 @@ let mostrandoChat = true;                  // en vista completa: ¿la pestaña a
 
 // ---------- arranque ----------
 async function arrancar() {
+  prepararEscritorio();
   config = await (await fetch("/api/config")).json();
+  $("#lateral-usuario").textContent = config.usuario && config.usuario !== "vos" ? config.usuario : "";
+  $("#lateral-version").textContent = `Plano ${config.version || ""}`;
   $("#saludo").textContent = t("Hola {usuario}, ¿qué querés construir?", { usuario: config.usuario });
   traducirEstatico();
   if (!config.claveConfigurada) { $("#barra-estado").textContent = t("Falta la clave de API: cargala en Configuración"); $("#barra-estado").style.cursor = "pointer"; $("#barra-estado").onclick = () => $("#abrir-config").click(); }
@@ -79,12 +83,14 @@ async function mostrarProyectos() {
   proyecto = null;
   clearInterval(refrescoInicio);
   refrescoInicio = setInterval(() => { if (!$("#vista-proyectos").hidden && !document.hidden) mostrarProyectos(); else clearInterval(refrescoInicio); }, 5000);
-  $("#barra-proyecto").textContent = "";
+  ponerProyectoEnBarra(null);
   $("#vista-entrevista").hidden = true;
   $("#vista-uso").hidden = true;
   $("#vista-proyectos").hidden = false;
+  marcarLateral("inicio");
   $("#saludo").textContent = t("Hola {usuario}", { usuario: config.usuario });
   const lista = await (await fetch("/api/proyectos")).json();
+  renderLateralProyectos(lista);
   const ul = $("#lista-proyectos");
   ul.innerHTML = "";
   if (!lista.length) ul.innerHTML = `<li class="vacio">${t("Todavía no hay proyectos. Creá el primero.")}</li>`;
@@ -206,7 +212,7 @@ function renderTemas() {
 function renderModos() {
   const cont = $("#modos"), actual = document.documentElement.dataset.modo || "sistema";
   cont.innerHTML = [["sistema", t("Sistema")], ["claro", t("Clara")], ["oscuro", t("Oscura")]].map(([v, tx]) => `<button type="button" class="segmento ${v === actual ? "segmento--activo" : ""}" data-modo="${v}">${tx}</button>`).join("");
-  cont.querySelectorAll(".segmento").forEach((b) => { b.onclick = () => { document.documentElement.dataset.modo = b.dataset.modo; localStorage.setItem("plano.modo", b.dataset.modo); renderModos(); }; });
+  cont.querySelectorAll(".segmento").forEach((b) => { b.onclick = () => { document.documentElement.dataset.modo = b.dataset.modo; localStorage.setItem("plano.modo", b.dataset.modo); renderModos(); avisarTemaAlEscritorio(); }; });
 }
 function renderIdiomas() {
   const cont = $("#idiomas"), actual = idiomaElegido();
@@ -286,6 +292,12 @@ document.querySelectorAll("[data-elegir-carpeta]").forEach((boton) => boton.addE
   alternativa.onclick = () => { alternativa.hidden = true; abrirExplorador(); };
   const aviso = setTimeout(() => { alternativa.hidden = false; }, 2000);
   try {
+    if (window.plano?.elegirCarpeta) { // en la app de escritorio el diálogo es el de la propia ventana: siempre aparece
+      clearTimeout(aviso);
+      const carpeta = await window.plano.elegirCarpeta();
+      if (carpeta) destinoCarpeta.value = carpeta;
+      return;
+    }
     const ctl = new AbortController(); const limite = setTimeout(() => ctl.abort(), 5 * 60 * 1000);
     const r = await fetch("/api/elegir-carpeta", { method: "POST", signal: ctl.signal });
     clearTimeout(limite);
@@ -346,7 +358,9 @@ async function abrirProyecto(id) {
   construccion = null; tareaActiva = null;
   if (datos.construccion) cargarConstruccion();
   cargarRevisiones();
-  $("#barra-proyecto").textContent = proyecto.nombre;
+  ponerProyectoEnBarra(proyecto);
+  marcarLateral(null, proyecto.id);
+  cargarLateralProyectos();
   $("#vista-proyectos").hidden = true;
   $("#vista-uso").hidden = true;
   $("#vista-entrevista").hidden = false;
@@ -2066,7 +2080,9 @@ const TIPO_TEXTO = { entrevista: t("Entrevista"), roadmap: t("Roadmap"), prototi
 let usoDatos = null;
 async function mostrarUso(idProyecto) {
   proyecto = null;
-  $("#barra-proyecto").textContent = t("Uso");
+  ponerProyectoEnBarra(null, t("Uso"));
+  marcarLateral("uso");
+  cargarLateralProyectos();
   $("#vista-entrevista").hidden = true;
   $("#vista-proyectos").hidden = true;
   $("#vista-uso").hidden = false;
@@ -2463,4 +2479,84 @@ function renderComparacion(x, tab) {
     </div>`;
   div.querySelectorAll("[data-marco]").forEach((b) => { b.onclick = () => { marcoConstr = b.dataset.marco; localStorage.setItem("plano.marcoConstr", marcoConstr); renderContenido(); }; });
   return div;
+}
+
+// ---------- la barra lateral y la barra de título ----------
+// La barra lateral es la navegación de siempre a mano: proyecto nuevo, proyectos, uso, configuración y los proyectos recientes.
+// Se pliega (queda guardado); en pantallas angostas se abre por encima y se cierra al elegir algo.
+const marcoApp = $("#marco-app");
+const angosta = () => matchMedia("(max-width: 900px)").matches;
+function plegarLateral(plegar) {
+  marcoApp.classList.toggle("marco-app--plegado", plegar);
+  $("#lateral-velo").hidden = plegar || !angosta();
+  if (!angosta()) localStorage.setItem("plano.lateral", plegar ? "plegado" : "abierto");
+}
+plegarLateral(angosta() ? true : localStorage.getItem("plano.lateral") === "plegado");
+matchMedia("(max-width: 900px)").addEventListener("change", (e) => plegarLateral(e.matches ? true : localStorage.getItem("plano.lateral") === "plegado"));
+$("#lateral-cerrar").onclick = () => plegarLateral(true);
+$("#lateral-abrir").onclick = () => plegarLateral(false);
+$("#lateral-velo").onclick = () => plegarLateral(true);
+const cerrarSiAngosta = () => { if (angosta()) plegarLateral(true); };
+$("#lateral-nuevo").onclick = () => { cerrarSiAngosta(); $("#nuevo-proyecto").click(); };
+$("#volver-barra").addEventListener("click", (e) => { e.preventDefault(); $("#volver").click(); });
+$$("[data-ir]").forEach((b) => { b.onclick = () => { cerrarSiAngosta(); if (b.dataset.ir === "inicio") $("#volver").click(); else if (b.dataset.ir === "uso") $("#abrir-uso").click(); else $("#abrir-config").click(); }; });
+function marcarLateral(seccion, idProyecto = null) {
+  $$("[data-ir]").forEach((b) => b.classList.toggle("lateral__item--activo", b.dataset.ir === seccion));
+  $$(".lateral__proyecto").forEach((b) => b.classList.toggle("lateral__proyecto--activo", b.dataset.id === idProyecto));
+}
+let proyectosRecientes = [];
+function renderLateralProyectos(lista) {
+  proyectosRecientes = lista;
+  const ul = $("#lateral-proyectos");
+  ul.innerHTML = "";
+  for (const p of lista.slice(0, 30)) {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "lateral__proyecto" + (proyecto?.id === p.id ? " lateral__proyecto--activo" : ""); b.dataset.id = p.id; b.title = p.carpeta;
+    b.innerHTML = `<span>${esc(p.nombre)}</span>${p.trabajando ? '<span class="lateral__punto"></span>' : ""}`;
+    b.onclick = () => { cerrarSiAngosta(); if (proyecto?.id === p.id) return; history.pushState({}, "", `?p=${p.id}`); abrirProyecto(p.id); };
+    li.append(b); ul.append(li);
+  }
+}
+async function cargarLateralProyectos() {
+  try { renderLateralProyectos(await (await fetch("/api/proyectos")).json()); } catch {}
+}
+setInterval(() => { if (!document.hidden && $("#vista-proyectos").hidden) cargarLateralProyectos(); }, 15000);
+// el nombre del proyecto en la barra es un desplegable para cambiar de proyecto sin volver al inicio
+function ponerProyectoEnBarra(p, texto = null) {
+  const b = $("#barra-proyecto");
+  if (!p && !texto) { b.hidden = true; return; }
+  b.hidden = false;
+  b.innerHTML = `<span>${esc(p ? p.nombre : texto)}</span>`;
+  b.onclick = () => abrirMenu(b, [
+    ...proyectosRecientes.slice(0, 12).map((x) => ({ texto: x.nombre, activo: x.id === p?.id, fn: () => { if (x.id !== p?.id) { history.pushState({}, "", `?p=${x.id}`); abrirProyecto(x.id); } } })),
+    { texto: t("Todos los proyectos"), fn: () => $("#volver").click() },
+  ]);
+}
+
+// ---------- la app de escritorio ----------
+// Si la interfaz corre dentro de la cáscara de Electron, la barra es la barra de título de la ventana, los botones del sistema
+// siguen al tema, la carpeta se elige con el diálogo nativo y las actualizaciones avisan acá.
+const temaOscuro = () => { const m = document.documentElement.dataset.modo; return m === "oscuro" || (m !== "claro" && matchMedia("(prefers-color-scheme: dark)").matches); };
+function avisarTemaAlEscritorio() { try { window.plano?.tema(temaOscuro()); } catch {} }
+function prepararEscritorio() {
+  if (!window.plano?.escritorio) return;
+  document.body.classList.add("escritorio");
+  if (window.plano.plataforma === "darwin") document.body.classList.add("mac");
+  avisarTemaAlEscritorio();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", avisarTemaAlEscritorio);
+  window.plano.alActualizar?.(({ version }) => {
+    const e = $("#barra-estado");
+    e.textContent = t("Plano {v} está listo: reiniciar para actualizar", { v: version });
+    e.style.cursor = "pointer";
+    e.onclick = () => window.plano.reiniciarParaActualizar();
+  });
+  // los enlaces que salen de Plano (la app construida, el navegable compartido) van al navegador de la persona
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest?.("a[href]");
+    if (!a || a.target !== "_blank") return;
+    const url = a.href;
+    if (url.startsWith(location.origin)) return;
+    e.preventDefault(); window.plano.abrirExterno(url);
+  });
 }
