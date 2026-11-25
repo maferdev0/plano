@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plano</title>
+  <link rel="stylesheet" href="/estilos.css?v=67" />
+  <script>
+    document.documentElement.dataset.tema = localStorage.getItem("plano.tema") || "grafito";
+    document.documentElement.dataset.modo = localStorage.getItem("plano.modo") || "sistema";
+    var idioma = localStorage.getItem("plano.idioma") || "sistema";
+    document.documentElement.lang = idioma !== "sistema" ? idioma : ((navigator.language || "es").toLowerCase().indexOf("en") === 0 ? "en" : "es");
+  </script>
+</head>
+<body>
+  <header class="barra">
+    <a class="marca" href="/" id="volver">Plano</a>
+    <span class="barra__proyecto" id="barra-proyecto"></span>
+    <span class="barra__estado" id="barra-estado"></span>
+  </header>
+
+  <!-- Pantalla 1: proyectos -->
+  <main id="vista-proyectos" class="inicio" hidden>
+    <div class="inicio__cab">
+      <h1 id="saludo">Hola</h1>
+      <div class="inicio__acciones">
+        <button type="button" class="btn btn--secundario" id="abrir-uso" data-t>Uso</button>
+        <button type="button" class="btn btn--secundario" id="abrir-config" data-t>Configuración</button>
+        <button type="button" class="btn btn--primario" id="nuevo-proyecto" data-t>Proyecto nuevo</button>
+      </div>
+    </div>
+    <ul id="lista-proyectos" class="sesiones"></ul>
+  </main>
+
+  <!-- Uso: tokens y plata, en general y por proyecto -->
+  <main id="vista-uso" class="inicio uso" hidden>
+    <div class="inicio__cab">
+      <h1 data-t>Uso</h1>
+      <div class="inicio__acciones">
+        <select id="uso-proyecto" class="selector-proyecto" aria-label="Proyecto"></select>
+      </div>
+    </div>
+    <div id="uso-cuerpo"></div>
+  </main>
+
+  <!-- Borrar un proyecto -->
+  <dialog id="dialogo-borrar" class="dialogo-borrar">
+    <form id="form-borrar" class="form" method="dialog">
+      <h3>Borrar <span id="borrar-nombre"></span></h3>
+      <p class="form__texto" id="borrar-texto"></p>
+      <label>Nombre del proyecto
+        <div class="borrar__nombre">
+          <input id="borrar-original" readonly tabindex="-1" />
+          <button type="button" class="btn btn--secundario btn--icono" id="borrar-copiar" title="Copiar el nombre"></button>
+        </div>
+      </label>
+      <label>Para confirmar, escribilo acá
+        <input name="nombre" required autocomplete="off" spellcheck="false" placeholder="Nombre del proyecto, tal cual" />
+      </label>
+      <p class="form__error" id="error-borrar" hidden></p>
+      <div class="form__pie">
+        <button type="button" class="btn btn--secundario" id="borrar-cancelar" data-t>Cancelar</button>
+        <button type="submit" class="btn btn--peligro" id="borrar-confirmar" disabled data-t>Borrar el proyecto</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Renombrar / duplicar -->
+  <dialog id="dialogo-proyecto" class="dialogo-nuevo">
+    <form id="form-proyecto" class="form" method="dialog">
+      <h3 id="proyecto-titulo"></h3>
+      <label>Nombre
+        <input name="nombre" required autocomplete="off" />
+      </label>
+      <label id="proyecto-carpeta-label">Carpeta donde va la copia
+        <div class="carpeta">
+          <input name="carpeta" required readonly placeholder="Todavía no elegiste una carpeta" />
+          <button type="button" class="btn btn--secundario" data-elegir-carpeta>Elegir carpeta…</button>
+        </div>
+      </label>
+      <p class="form__error" id="error-proyecto" hidden></p>
+      <div class="form__pie">
+        <button type="button" class="btn btn--secundario" id="proyecto-cancelar" data-t>Cancelar</button>
+        <button type="submit" class="btn btn--primario" id="proyecto-ok">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Configuración -->
+  <dialog id="dialogo-config" class="dialogo-config">
+    <div class="detalle__cab">
+      <div class="detalle__cab-texto"><h3 data-t>Configuración</h3></div>
+      <button type="button" class="btn btn--fantasma btn--chico" id="config-cerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="config__cuerpo">
+      <div class="config__fila">
+        <div class="config__texto">
+          <strong data-t>Tema</strong>
+          <span data-t>Color de tus globos y botones, y color de los globos de la IA.</span>
+        </div>
+        <div class="temas" id="temas"></div>
+      </div>
+      <div class="config__fila">
+        <div class="config__texto">
+          <strong data-t>Apariencia</strong>
+          <span data-t>Clara, oscura, o la que tenga el sistema.</span>
+        </div>
+        <div class="segmentos" id="modos"></div>
+      </div>
+      <div class="config__fila">
+        <div class="config__texto">
+          <strong data-t>Idioma</strong>
+          <span data-t>El de la interfaz y el que usa el agente con vos. Por defecto, el del sistema.</span>
+        </div>
+        <div class="segmentos" id="idiomas"></div>
+      </div>
+      <form class="config__cuenta" id="form-config" autocomplete="off">
+        <div class="config__fila config__fila--campo">
+          <div class="config__texto"><strong data-t>Tu nombre</strong><span data-t>Cómo te llama la entrevistadora.</span></div>
+          <input name="usuario" maxlength="60" />
+        </div>
+        <div class="config__fila config__fila--campo">
+          <div class="config__texto"><strong data-t>Clave de API de Anthropic</strong><span id="config-clave-estado"></span></div>
+          <div class="config__clave">
+            <input name="claveApi" type="password" placeholder="sk-ant-…" spellcheck="false" />
+            <button type="button" class="btn btn--fantasma btn--chico" id="config-ver-clave" data-t>Ver</button>
+          </div>
+        </div>
+        <div class="config__fila config__fila--campo">
+          <div class="config__texto"><strong data-t>Modelo para la entrevista y el roadmap</strong><span data-t>Donde pesa el criterio.</span></div>
+          <select name="modelo"></select>
+        </div>
+        <div class="config__fila config__fila--campo">
+          <div class="config__texto"><strong data-t>Modelo para las pantallas del prototipo</strong><span data-t>Generar y corregir HTML. La calidad la fijan el brief, el verificador y tu revisión.</span></div>
+          <select name="modeloPrototipo"></select>
+        </div>
+        <div class="config__fila config__fila--campo">
+          <div class="config__texto"><strong data-t>Compactar la conversación a partir de</strong><span data-t>Tokens del historial. Más alto, más memoria de la charla y más caro cada mensaje; lo registrado está en el Plano igual.</span></div>
+          <div class="config__numero"><input name="compactar" type="number" min="10000" max="400000" step="5000" /> <span>tokens</span></div>
+        </div>
+        <div class="config__pie">
+          <span class="config__guardado" id="config-guardado" hidden data-t>Guardado</span>
+          <span class="config__error" id="config-error" hidden></span>
+          <button type="submit" class="btn btn--primario btn--chico" data-t>Guardar</button>
+        </div>
+      </form>
+      <p class="config__version" id="config-version"></p>
+    </div>
+  </dialog>
+
+  <!-- Formulario de proyecto nuevo -->
+  <dialog id="dialogo-nuevo" class="dialogo-nuevo">
+    <form id="form-nuevo" class="form" method="dialog">
+      <h3 data-t>Proyecto nuevo</h3>
+      <label>Nombre
+        <input name="nombre" required placeholder="Atendia" autocomplete="off" />
+      </label>
+      <label>Qué tipo de aplicación es
+        <input type="hidden" name="tipo_app" />
+        <div class="segmentos segmentos--llenos" id="tipos-app">
+          <button type="button" class="segmento" data-tipo="web" data-nota="Corre en el navegador. Celular, computadora o ambos. Se publica en un dominio." data-t>Web</button>
+          <button type="button" class="segmento" data-tipo="escritorio" data-nota="Se instala en la computadora (Windows, macOS, Linux). Las pantallas son ventanas." data-t>De escritorio</button>
+          <button type="button" class="segmento" data-tipo="movil" data-nota="Se instala en el teléfono (Android, iOS). Solo pantallas de celular." data-t>Móvil</button>
+        </div>
+        <small class="form__nota" id="tipo-app-nota"></small>
+        <small class="form__nota form__nota--fija" data-t>Se elige una vez: de esto salen el stack, los marcos del prototipo y cómo se verifica y publica la construcción.</small>
+      </label>
+      <label>Carpeta donde vive
+        <div class="carpeta">
+          <input name="carpeta" required readonly placeholder="Todavía no elegiste una carpeta" />
+          <button type="button" id="elegir-carpeta" class="btn btn--secundario" data-elegir-carpeta>Elegir carpeta…</button>
+        </div>
+      </label>
+      <p class="form__error" id="error-nuevo" hidden></p>
+      <div class="form__pie">
+        <button type="button" class="btn btn--secundario" id="nuevo-cancelar" data-t>Cancelar</button>
+        <button type="submit" class="btn btn--primario">Empezar la entrevista</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Pantalla 2: trabajo (conversación + Plano) -->
+  <main id="vista-entrevista" class="trabajo" hidden>
+    <section class="chat" id="panel-chat">
+      <div class="chat__mensajes" id="mensajes"></div>
+      <div class="siguiente" id="siguiente"></div>
+      <form class="chat__entrada" id="form-mensaje">
+        <div class="selector" id="selector-menciones" hidden></div>
+        <textarea id="entrada" rows="1" placeholder="Escribí acá. Enter envía, Shift+Enter baja de línea." data-t-placeholder autocomplete="off"></textarea>
+        <button type="submit" id="enviar" class="btn btn--primario" data-t>Enviar</button>
+      </form>
+    </section>
+    <section class="plano" id="panel-plano">
+      <div class="cabecera cabecera--plano" id="cabecera-plano">
+        <div class="pestanas" id="pestanas"></div>
+        <button type="button" class="btn btn--fantasma btn--icono" id="alternar-vista"></button>
+      </div>
+      <div class="plano__contenido" id="contenido-plano"></div>
+      <div class="modo" id="modo-vista"></div>
+    </section>
+  </main>
+
+  <!-- Detalle de una tarjeta -->
+  <dialog id="detalle" class="detalle">
+    <div class="detalle__cab">
+      <div class="detalle__cab-texto">
+        <span class="detalle__coleccion" id="detalle-coleccion"></span>
+        <h3 id="detalle-titulo"></h3>
+      </div>
+      <button type="button" class="btn btn--fantasma btn--chico" id="detalle-cerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="detalle__cuerpo" id="detalle-cuerpo"></div>
+    <form class="detalle__respuesta" id="detalle-respuesta" hidden>
+      <textarea id="detalle-respuesta-texto" rows="1" placeholder="Tu respuesta. Enter envía, Shift+Enter baja de línea." data-t-placeholder></textarea>
+      <button type="submit" class="btn btn--primario" data-t>Responder</button>
+    </form>
+    <div class="detalle__pie" id="detalle-pie">
+      <button type="button" class="btn btn--primario" id="detalle-responder" hidden data-t>Responder</button>
+      <button type="button" class="btn btn--secundario" id="detalle-mencionar" data-t>Mencionar</button>
+    </div>
+  </dialog>
+
+  <!-- Explorador de carpetas de respaldo -->
+  <dialog id="explorador" class="explorador">
+    <div class="explorador__cab">
+      <strong>Elegí una carpeta</strong>
+      <button type="button" class="btn btn--secundario btn--chico" id="explorador-inicio">Inicio</button>
+      <button type="button" class="btn btn--secundario btn--chico" id="explorador-subir">Subir</button>
+    </div>
+    <div class="explorador__ruta" id="explorador-ruta"></div>
+    <ul class="explorador__lista" id="explorador-lista"></ul>
+    <div class="explorador__pie">
+      <button type="button" class="btn btn--secundario" id="explorador-cancelar">Cancelar</button>
+      <button type="button" class="btn btn--primario" id="explorador-elegir">Usar esta carpeta</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="/app.js?v=67"></script>
+</body>
+</html>

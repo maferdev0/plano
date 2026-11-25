@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Navegar el prototipo</title>
+  <script>
+    document.documentElement.dataset.modo = localStorage.getItem("plano.modo") || "sistema";
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("sistema-oscuro");
+  </script>
+  <style>
+    :root { --tinta: #18181b; --gris-50: #fafafa; --gris-100: #f4f4f5; --gris-200: #e4e4e7; --gris-300: #d4d4d8; --gris-400: #a1a1aa; --gris-500: #71717a; --blanco: #fff; --ok: #16a34a; --aviso: #d97706; }
+    :root[data-modo="oscuro"], :root:not([data-modo="claro"]):not([data-modo="oscuro"]).sistema-oscuro { color-scheme: dark; --tinta: #f4f4f5; --gris-50: #121215; --gris-100: #202026; --gris-200: #2c2c34; --gris-300: #3c3c46; --gris-400: #6f6f7a; --gris-500: #9d9da8; --blanco: #1c1c21; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--tinta); background: var(--gris-100); display: flex; flex-direction: column; }
+    .barra { height: 52px; flex: none; display: flex; align-items: center; gap: 16px; padding: 0 16px; background: var(--blanco); border-bottom: 1px solid var(--gris-200); }
+    .barra strong { font-weight: 600; }
+    .barra a { color: var(--gris-500); text-decoration: none; }
+    .barra a:hover { color: var(--tinta); }
+    .barra select { height: 32px; padding: 0 8px; border: 1px solid var(--gris-300); border-radius: 8px; background: var(--blanco); font: inherit; }
+    .barra__estado { font-size: 12.5px; color: var(--gris-500); }
+    .menu { position: fixed; z-index: 50; background: var(--blanco); border: 1px solid var(--gris-200); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.16); padding: 6px; display: flex; flex-direction: column; min-width: 180px; }
+    .menu button { text-align: left; border: 0; background: transparent; padding: 8px 10px; border-radius: 8px; font: inherit; font-size: 13.5px; color: var(--tinta); cursor: pointer; white-space: nowrap; }
+    .menu button:hover { background: var(--gris-100); }
+    .menu button small { display: block; font-size: 12px; color: var(--gris-500); white-space: normal; max-width: 260px; margin-top: 2px; }
+    .menu__activo { background: var(--gris-100); font-weight: 500; }
+    .menu__activo::before { content: "✓ "; color: var(--primario, var(--tinta)); }
+    .barra__derecha { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+    .marcos { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--gris-200); border-radius: 10px; }
+    .marco-btn { width: 30px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--gris-500); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .marco-btn svg { width: 16px; height: 16px; }
+    .marcos[hidden], .marco-btn[hidden] { display: none; }
+    .marco-btn:hover { color: var(--tinta); }
+    .marco-btn--activo { background: var(--gris-100); color: var(--tinta); }
+    .marco--escritorio.marco--angosto { width: 100%; }
+    .cuerpo { flex: 1; min-height: 0; display: flex; }
+    .lista { width: 260px; flex: none; overflow-y: auto; background: var(--blanco); border-right: 1px solid var(--gris-200); padding: 10px 0; }
+    .lista h2 { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gris-500); margin: 10px 16px 4px; font-weight: 600; }
+    .item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 16px; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+    .item:hover { background: var(--gris-50); }
+    .item--activa { background: var(--gris-100); }
+    .item--pendiente { color: var(--gris-400); }
+    .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--gris-300); flex: none; }
+    .item--aprobada .punto { background: var(--ok); }
+    .item--generada .punto, .item--devuelta .punto { background: var(--aviso); }
+    .item span:last-child { margin-left: auto; font-size: 11.5px; color: var(--gris-400); flex: none; }
+    .escenario { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 20px; overflow: auto; }
+    .marco { background: var(--blanco); overflow: hidden; box-shadow: 0 24px 60px rgba(24, 24, 27, 0.25); }
+    .marco--celular { width: 390px; height: 844px; border: 10px solid #18181b; border-radius: 44px; background: #18181b; flex: none; }
+    .marco--escritorio { width: 100%; height: 100%; max-width: 1280px; border: 1px solid var(--gris-300); border-radius: 10px; }
+    .marco iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--blanco); }
+    .marco--celular iframe { border-radius: 34px; }
+    .vacio { max-width: 40ch; text-align: center; color: var(--gris-500); }
+    @media (max-width: 800px) { .lista { display: none; } .escenario { padding: 8px; } }
+  </style>
+</head>
+<body>
+  <header class="barra">
+    <strong id="nombre"></strong>
+    <select id="version" aria-label="Versión"></select>
+    <select id="pantalla" aria-label="Pantalla"></select>
+    <span class="barra__estado" id="estado"></span>
+    <span class="barra__derecha">
+      <span class="marcos">
+        <button type="button" class="marco-btn" id="estados-btn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 20.5 12 12 20.5 3.5 12Z"/><path d="M12 8.5 15.5 12 12 15.5 8.5 12Z"/></svg></button>
+        <button type="button" class="marco-btn" data-marco="celular" title="Ver como en un celular"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg></button>
+        <button type="button" class="marco-btn" data-marco="escritorio" title="Ver como en escritorio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+      </span>
+      <a id="volver" href="/" data-t>Abrir en Plano</a>
+    </span>
+  </header>
+  <div class="cuerpo">
+    <aside class="lista" id="lista"></aside>
+    <main class="escenario" id="escenario"></main>
+  </div>
+  <script type="module">
+    const idProyecto = decodeURIComponent(location.pathname.split("/").pop());
+    const $ = (s) => document.querySelector(s);
+    const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const idiomaGuardado = (() => { try { return localStorage.getItem("plano.idioma") || "sistema"; } catch { return "sistema"; } })();
+    const en = idiomaGuardado === "en" || (idiomaGuardado === "sistema" && (navigator.language || "es").toLowerCase().startsWith("en"));
+    const T = en ? { pendiente: "pending", generada: "to review", devuelta: "sent back", aprobada: "approved", abrir: "Open in Plano", vacia: "This version has no screens yet.", celular: "View as on a phone", escritorio: "View as on desktop", navegar: "browse" } : { pendiente: "pendiente", generada: "para revisar", devuelta: "devuelta", aprobada: "aprobada", abrir: "Abrir en Plano", vacia: "Esta versión todavía no tiene pantallas.", celular: "Ver como en un celular", escritorio: "Ver como en escritorio", navegar: "navegar" };
+    const ESTADO = { pendiente: T.pendiente, generada: T.generada, devuelta: T.devuelta, aprobada: T.aprobada };
+    document.documentElement.lang = en ? "en" : "es";
+    $("#volver").textContent = T.abrir;
+    document.querySelector('.marco-btn[data-marco="celular"]').title = T.celular;
+    document.querySelector('.marco-btn[data-marco="escritorio"]').title = T.escritorio;
+    const dispositivosDe = (p) => { const ta = plano.identidad?.tipo_app; if (ta === "movil") return ["celular"]; if (ta === "escritorio") return ["escritorio"]; if (Array.isArray(p?.dispositivos) && p.dispositivos.length) return p.dispositivos; const d = plano.identidad?.dispositivos; return d === "celular" ? ["celular"] : d === "escritorio" ? ["escritorio"] : ["celular", "escritorio"]; };
+
+    const datos = await (await fetch(`/api/proyectos/${encodeURIComponent(idProyecto)}`)).json();
+    const plano = datos.plano || {};
+    document.title = `${datos.proyecto?.nombre || idProyecto} · ${T.navegar}`;
+    $("#nombre").textContent = datos.proyecto?.nombre || idProyecto;
+    $("#volver").href = `/?p=${encodeURIComponent(idProyecto)}&t=prototipo`;
+
+    const pantallas = new Map((plano.pantallas || []).map((p) => [p.id, p]));
+    const estados = new Map((plano.prototipo || []).map((p) => [p.id, p.estado]));
+    const versiones = [...(plano.roadmap || [])].sort((a, b) => (a.orden || 99) - (b.orden || 99));
+    const conAlgo = (v) => (v.pantallas || []).some((id) => estados.has(id) && estados.get(id) !== "pendiente");
+    let version = versiones.find((v) => conAlgo(v) && (v.pantallas || []).some((id) => estados.get(id) !== "aprobada")) || versiones.find(conAlgo) || versiones[0];
+    let actual = null;
+    let iframe = null, marco = null;
+    let marcoElegido = null; // null = según la pantalla; "celular" | "escritorio" si la persona eligió
+    let estadoElegido = null; // estado de la pantalla actual elegido en la barra (los estados están en el Plano; la página lee ?estado=)
+    const estadosDe = (p) => (Array.isArray(p?.estados) ? p.estados : []).map((e) => (typeof e === "string" ? { id: e, titulo: e } : { id: e.id || e.titulo, titulo: e.titulo || e.id, descripcion: e.descripcion })).filter((e) => e.id);
+    let menu = null;
+    function renderEstados() {
+      const lista = estadosDe(pantallas.get(actual)), btn = $("#estados-btn");
+      btn.hidden = lista.length < 2;
+      document.querySelector(".marcos").hidden = btn.hidden && document.querySelectorAll(".marco-btn[data-marco]:not([hidden])").length < 2;
+      if (btn.hidden) return;
+      const activo = lista.find((e) => e.id === estadoElegido) || lista[0];
+      btn.title = (en ? "Screen state: " : "Estado de la pantalla: ") + activo.titulo;
+      btn.classList.toggle("marco-btn--activo", activo.id !== lista[0].id);
+      btn.onclick = () => {
+        menu?.remove();
+        menu = document.createElement("div"); menu.className = "menu";
+        for (const e of lista) {
+          const b = document.createElement("button"); b.type = "button"; b.textContent = e.titulo;
+          if (e.descripcion) { const d = document.createElement("small"); d.textContent = e.descripcion; b.append(d); }
+          if (e.id === activo.id) b.classList.add("menu__activo");
+          b.onclick = () => { menu.remove(); menu = null; estadoElegido = e.id; ir(actual, estadoElegido); };
+          menu.append(b);
+        }
+        document.body.append(menu);
+        const r = btn.getBoundingClientRect();
+        menu.style.top = r.bottom + 6 + "px"; menu.style.left = Math.max(8, Math.min(window.innerWidth - menu.offsetWidth - 8, r.right - menu.offsetWidth)) + "px";
+        setTimeout(() => document.addEventListener("pointerdown", function cerrar(ev) { if (menu && !menu.contains(ev.target)) { menu.remove(); menu = null; } else if (menu) document.addEventListener("pointerdown", cerrar, { once: true }); }, { once: true }), 0);
+      };
+    }
+    const selP = $("#pantalla");
+    selP.onchange = () => ir(selP.value);
+    document.querySelectorAll(".marco-btn[data-marco]").forEach((b) => { b.onclick = () => { marcoElegido = b.dataset.marco; aplicarMarco(); }; });
+
+    const sel = $("#version");
+    sel.innerHTML = versiones.map((v) => `<option value="${esc(v.id)}">${esc(v.id)} · ${esc(String(v.titulo || "").replace(/^\s*v\d+\s*[·:\-–]\s*/i, ""))}</option>`).join("");
+    sel.onchange = () => { version = versiones.find((v) => v.id === sel.value); ir(primeraDe(version)); };
+
+    function primeraDe(v) {
+      const ids = v?.pantallas || [];
+      return ids.find((id) => ["generada", "devuelta", "aprobada"].includes(estados.get(id))) || ids[0] || null;
+    }
+    function versionDe(id) { return versiones.find((v) => (v.pantallas || []).includes(id)); }
+
+    function renderLista() {
+      const ids = version?.pantallas || [];
+      $("#lista").innerHTML = `<h2>${esc(version?.id || "")} · ${esc(String(version?.titulo || "").replace(/^\s*v\d+\s*[·:\-–]\s*/i, ""))}</h2>` + ids.map((id) => {
+        const p = pantallas.get(id), e = estados.get(id) || "pendiente";
+        return `<button type="button" class="item item--${e} ${id === actual ? "item--activa" : ""}" data-id="${esc(id)}"><span class="punto"></span><span>${esc(p?.titulo || id)}</span><span>${ESTADO[e] || e}</span></button>`;
+      }).join("");
+      $("#lista").querySelectorAll(".item").forEach((b) => { b.onclick = () => ir(b.dataset.id); });
+    }
+
+    function renderCabecera() {
+      const ids = version?.pantallas || [];
+      selP.innerHTML = ids.map((id) => `<option value="${esc(id)}">${esc(pantallas.get(id)?.titulo || id)}</option>`).join("");
+      if (actual && !ids.includes(actual)) selP.innerHTML += `<option value="${esc(actual)}">${esc(pantallas.get(actual)?.titulo || actual)}</option>`;
+      selP.value = actual || "";
+      $("#estado").textContent = actual ? (ESTADO[estados.get(actual) || "pendiente"]) : "";
+      sel.value = version?.id || "";
+    }
+    function aplicarMarco() {
+      if (!marco) return;
+      const p = pantallas.get(actual), disp = dispositivosDe(p);
+      const tipo = disp.includes(marcoElegido) ? marcoElegido : disp[0];
+      marco.className = "marco marco--" + tipo;
+      marco.style.zoom = "";
+      document.querySelectorAll(".marco-btn[data-marco]").forEach((b) => { b.classList.toggle("marco-btn--activo", b.dataset.marco === tipo); b.hidden = !disp.includes(b.dataset.marco); });
+      document.querySelector(".marcos").hidden = disp.length < 2 && $("#estados-btn").hidden;
+      ajustar();
+    }
+
+    function ajustar() {
+      if (!marco || !marco.classList.contains("marco--celular")) return;
+      const esc = $("#escenario");
+      marco.style.zoom = Math.min(1, (esc.clientHeight - 40) / 864, (esc.clientWidth - 40) / 410);
+    }
+    window.addEventListener("resize", ajustar);
+
+    // El marco se crea una vez y el iframe navega adentro; así los enlaces del prototipo funcionan solos.
+    function ir(id, estado = null) {
+      if (!id) { $("#escenario").innerHTML = `<p class="vacio">${T.vacia}</p>`; actual = null; renderLista(); renderCabecera(); return; }
+      if (!iframe) {
+        marco = document.createElement("div"); marco.className = "marco";
+        iframe = document.createElement("iframe"); iframe.title = "Prototipo";
+        iframe.addEventListener("load", alCargar);
+        marco.append(iframe); $("#escenario").innerHTML = ""; $("#escenario").append(marco);
+      }
+      const primero = estadosDe(pantallas.get(id))[0]?.id;
+      iframe.src = `/prototipo/${encodeURIComponent(idProyecto)}/${encodeURIComponent(id)}.html${estado && estado !== primero ? `?estado=${encodeURIComponent(estado)}` : ""}`;
+    }
+    function alCargar() {
+      let id = null;
+      try { id = decodeURIComponent(iframe.contentWindow.location.pathname.split("/").pop()).replace(/\.html$/, ""); } catch {}
+      if (!id) return;
+      if (id !== actual) estadoElegido = null; // al pasar a otra pantalla (por un enlace del prototipo o la lista) se ve su estado normal
+      actual = id;
+      const v = versionDe(id); if (v) version = v;
+      renderEstados(); aplicarMarco();
+      history.replaceState({}, "", "#" + encodeURIComponent(id));
+      renderLista(); renderCabecera();
+    }
+
+    const pedida = decodeURIComponent(location.hash.slice(1));
+    if (pedida && pantallas.has(pedida)) { version = versionDe(pedida) || version; ir(pedida); }
+    else ir(primeraDe(version));
+    renderLista(); renderCabecera();
+  </script>
+</body>
+</html>
