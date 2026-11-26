@@ -1,5 +1,5 @@
 // Plano — interfaz de la tajada 1: proyectos + conversación + el Plano en pestañas.
-import { t, idiomaActual, idiomaElegido, locale, traducirEstatico, IDIOMAS } from "./idiomas.js?v=69";
+import { t, idiomaActual, idiomaElegido, locale, traducirEstatico, IDIOMAS } from "./idiomas.js?v=70";
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
@@ -1659,9 +1659,14 @@ function renderDiagrama(lista, resaltarId) {
       const pd = pos.get(de), pa = pos.get(a);
       const arriba = pa.y + pa.h <= pd.y; // la referida está arriba
       const x1 = reparto(pd, salidas.get(de), salidas.get(de).indexOf(a)), y1 = arriba ? pd.y : pd.y + pd.h;
-      const x2 = reparto(pa, entradas.get(a), entradas.get(a).indexOf(de)), y2 = arriba ? pa.y + pa.h + 4 : pa.y - 4;
-      const mid = (y1 + y2) / 2;
-      return `<path class="diag__flecha" data-de="${de}" data-a="${a}" d="M${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}" marker-end="url(#punta)"/>`;
+      const x2 = reparto(pa, entradas.get(a), entradas.get(a).indexOf(de));
+      // la punta toca el borde de la caja referida; la línea termina en la base de la punta, nunca la atraviesa
+      const PUNTA = 9, ANCHO = 7;
+      const yPunta = arriba ? pa.y + pa.h + 1 : pa.y - 1;
+      const yBase = arriba ? yPunta + PUNTA : yPunta - PUNTA;
+      const mid = (y1 + yBase) / 2;
+      const cabeza = `${x2},${yPunta} ${x2 - ANCHO / 2},${yBase} ${x2 + ANCHO / 2},${yBase}`;
+      return `<g class="diag__flecha" data-de="${de}" data-a="${a}"><path d="M${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${yBase}"/><polygon class="diag__punta" points="${cabeza}"/></g>`;
     }).join("");
   }
 
@@ -1681,7 +1686,6 @@ function renderDiagrama(lista, resaltarId) {
   const wrap = document.createElement("div");
   wrap.className = "diagrama";
   wrap.innerHTML = `<svg class="diag" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
-    <defs><marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="diag__punta"/></marker></defs>
     <g class="diag__flechas">${dibujarFlechas()}</g>${cajas}</svg>
     <div class="diagrama__pie">${lista.length} entidades · ${pares.length} relaciones</div>
     <div class="diagrama__zoom">
